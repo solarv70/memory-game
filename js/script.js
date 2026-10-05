@@ -96,9 +96,16 @@ function closeModal() {
     document.removeEventListener("keydown", escapeHandler);
     escapeHandler = null;
   }
+
+  document.body.style.overflow = "";
 }
 
-function openModal(modalTitleText, modalContentText) {
+function openModal(
+  modalTitleText,
+  modalContentText,
+  actionButtonText = null,
+  actionFunction = null,
+) {
   closeModal();
 
   modalOverlay = document.createElement("div");
@@ -125,8 +132,21 @@ function openModal(modalTitleText, modalContentText) {
   modalClose.textContent = "Close";
 
   modal.append(modalTitle, modalContent, modalClose);
+
+  if (actionButtonText !== null && actionFunction !== null) {
+    const modalAction = document.createElement("button");
+    modalAction.className = "modal-action";
+    modalAction.textContent = actionButtonText;
+    modalAction.addEventListener("click", () => {
+      closeModal();
+      actionFunction();
+    });
+    modal.append(modalAction);
+  }
+
   modalOverlay.append(modal);
   document.body.append(modalOverlay);
+  document.body.style.overflow = "hidden";
 
   modalClose.addEventListener("click", closeModal);
   modalOverlay.addEventListener("click", (event) => {
@@ -141,6 +161,14 @@ function openModal(modalTitleText, modalContentText) {
     }
   };
   document.addEventListener("keydown", escapeHandler);
+}
+
+function getCurrentDate() {
+  const date = new Date();
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${day}.${month}.${date.getFullYear()}`;
 }
 
 function getResults() {
@@ -163,7 +191,7 @@ function saveResult(moves) {
 
   results.push({
     moves: moves,
-    date: new Date().toLocaleDateString(),
+    date: getCurrentDate(),
   });
 
   results.sort(
@@ -230,7 +258,7 @@ function handleCardClick(event) {
     if (matchedPairs === 8 && !gameFinished) {
       gameFinished = true;
       saveResult(movesCount);
-      openModal("You won!", `Moves: ${movesCount}`);
+      openModal("You won!", `Moves: ${movesCount}`, "New Game", startNewGame);
     }
 
     return;
