@@ -47,7 +47,7 @@ const cardData = [
   { id: 8, symbol: "🍒" },
 ];
 
-const cards = cardData.concat(cardData);
+const resultsStorageKey = "memoryGameResults";
 
 function shuffle(cardsToShuffle) {
   for (let index = cardsToShuffle.length - 1; index > 0; index -= 1) {
@@ -72,11 +72,244 @@ function createCard(cardData) {
   cardBack.textContent = cardData.symbol;
 
   card.append(cardFront, cardBack);
+  card.addEventListener("click", handleCardClick);
   return card;
 }
 
-shuffle(cards);
+let firstCard = null;
+let secondCard = null;
+let movesCount = 0;
+let matchedPairs = 0;
+let lockBoard = false;
+let mismatchTimer = null;
+let gameFinished = false;
+let modalOverlay = null;
+let escapeHandler = null;
 
-cards.forEach((cardData) => {
+function closeModal() {
+  if (modalOverlay !== null) {
+    modalOverlay.remove();
+    modalOverlay = null;
+  }
+
+  if (escapeHandler !== null) {
+    document.removeEventListener("keydown", escapeHandler);
+    escapeHandler = null;
+  }
+
+  document.body.style.overflow = "";
+}
+
+function openModal(
+  modalTitleText,
+  modalContentText,
+  actionButtonText = null,
+  actionFunction = null,
+) {
+  closeModal();
+
+  modalOverlay = document.createElement("div");
+  modalOverlay.className = "modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+
+  const modalTitle = document.createElement("h2");
+  modalTitle.className = "modal-title";
+  modalTitle.textContent = modalTitleText;
+
+  const modalContent = document.createElement("div");
+  modalContent.className = "modal-content";
+
+  if (typeof modalContentText === "string") {
+    modalContent.textContent = modalContentText;
+  } else {
+    modalContent.append(modalContentText);
+  }
+
+  const modalClose = document.createElement("button");
+  modalClose.className = "modal-close";
+  modalClose.textContent = "Close";
+
+  modal.append(modalTitle, modalContent, modalClose);
+
+  if (actionButtonText !== null && actionFunction !== null) {
+    const modalAction = document.createElement("button");
+    modalAction.className = "modal-action";
+    modalAction.textContent = actionButtonText;
+    modalAction.addEventListener("click", () => {
+      closeModal();
+      actionFunction();
+    });
+    modal.append(modalAction);
+  }
+
+  modalOverlay.append(modal);
+  document.body.append(modalOverlay);
+  document.body.style.overflow = "hidden";
+
+  modalClose.addEventListener("click", closeModal);
+  modalOverlay.addEventListener("click", (event) => {
+    if (event.target === modalOverlay) {
+      closeModal();
+    }
+  });
+
+  escapeHandler = (event) => {
+    if (event.key === "Escape") {
+      closeModal();
+    }
+  };
+  document.addEventListener("keydown", escapeHandler);
+}
+
+function getCurrentDate() {
+  const date = new Date();
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${day}.${month}.${date.getFullYear()}`;
+}
+
+function getResults() {
+  const savedResults = localStorage.getItem(resultsStorageKey);
+
+  if (savedResults === null) {
+    return [];
+  }
+
+  try {
+    const results = JSON.parse(savedResults);
+    return Array.isArray(results) ? results : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveResult(moves) {
+  const results = getResults();
+
+  results.push({
+    moves: moves,
+    date: getCurrentDate(),
+  });
+
+  results.sort(
+    (firstResult, secondResult) => firstResult.moves - secondResult.moves,
+  );
+
+  const bestResults = results.slice(0, 10);
+  localStorage.setItem(resultsStorageKey, JSON.stringify(bestResults));
+}
+
+function showLeaderboard() {
+  const results = getResults();
+  const leaderboardContent = document.createElement("div");
+
+  if (results.length === 0) {
+    const noResults = document.createElement("p");
+    noResults.textContent = "No results yet.";
+    leaderboardContent.append(noResults);
+  } else {
+    const resultList = document.createElement("ol");
+
+    results.forEach((result) => {
+      const resultItem = document.createElement("li");
+      resultItem.textContent = `${result.moves} moves - ${result.date}`;
+      resultList.append(resultItem);
+    });
+
+    leaderboardContent.append(resultList);
+  }
+
+  openModal("Leaderboard", leaderboardContent);
+}
+
+function handleCardClick(event) {
+  const clickedCard = event.currentTarget;
+
+  if (lockBoard || clickedCard.classList.contains("matched")) {
+    return;
+  }
+
+  if (clickedCard === firstCard) {
+    return;
+  }
+
+  clickedCard.classList.add("flipped");
+
+  if (firstCard === null) {
+    firstCard = clickedCard;
+    return;
+  }
+
+  secondCard = clickedCard;
+  movesCount += 1;
+  moves.textContent = `Moves: ${movesCount}`;
+
+  if (firstCard.dataset.id === secondCard.dataset.id) {
+    firstCard.classList.add("matched");
+    secondCard.classList.add("matched");
+    matchedPairs += 1;
+    pairs.textContent = `Pairs: ${matchedPairs} / 8`;
+    firstCard = null;
+    secondCard = null;
+
+    if (matchedPairs === 8 && !gameFinished) {
+      gameFinished = true;
+      saveResult(movesCount);
+      openModal("You won!", `Moves: ${movesCount}`, "New Game", startNewGame);
+    }
+
+    return;
+  }
+
+  lockBoard = true;
+
+  mismatchTimer = setTimeout(() => {
+    firstCard.classList.remove("flipped");
+    secondCard.classList.remove("flipped");
+    firstCard = null;
+    secondCard = null;
+    lockBoard = false;
+    mismatchTimer = null;
+  }, 1000);
+}
+
+function startNewGame() {
+  closeModal();
+
+  if (mismatchTimer !== null) {
+    clearTimeout(mismatchTimer);
+  }
+
+  mismatchTimer = null;
+  firstCard = null;
+  secondCard = null;
+  movesCount = 0;
+  matchedPairs = 0;
+  lockBoard = false;
+  gameFinished = false;
+
+  moves.textContent = "Moves: 0";
+  pairs.textContent = "Pairs: 0 / 8";
+
+  gameBoard.replaceChildren();
+
+  const newCards = cardData.concat(cardData);
+  shuffle(newCards);
+
+  newCards.forEach((cardData) => {
+    gameBoard.append(createCard(cardData));
+  });
+}
+
+newGameButton.addEventListener("click", startNewGame);
+leaderboardButton.addEventListener("click", showLeaderboard);
+
+const initialCards = cardData.concat(cardData);
+shuffle(initialCards);
+
+initialCards.forEach((cardData) => {
   gameBoard.append(createCard(cardData));
 });
