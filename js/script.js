@@ -47,6 +47,8 @@ const cardData = [
   { id: 8, symbol: "🍒" },
 ];
 
+const resultsStorageKey = "memoryGameResults";
+
 function shuffle(cardsToShuffle) {
   for (let index = cardsToShuffle.length - 1; index > 0; index -= 1) {
     const randomIndex = Math.floor(Math.random() * (index + 1));
@@ -109,9 +111,14 @@ function openModal(modalTitleText, modalContentText) {
   modalTitle.className = "modal-title";
   modalTitle.textContent = modalTitleText;
 
-  const modalContent = document.createElement("p");
+  const modalContent = document.createElement("div");
   modalContent.className = "modal-content";
-  modalContent.textContent = modalContentText;
+
+  if (typeof modalContentText === "string") {
+    modalContent.textContent = modalContentText;
+  } else {
+    modalContent.append(modalContentText);
+  }
 
   const modalClose = document.createElement("button");
   modalClose.className = "modal-close";
@@ -134,6 +141,60 @@ function openModal(modalTitleText, modalContentText) {
     }
   };
   document.addEventListener("keydown", escapeHandler);
+}
+
+function getResults() {
+  const savedResults = localStorage.getItem(resultsStorageKey);
+
+  if (savedResults === null) {
+    return [];
+  }
+
+  try {
+    const results = JSON.parse(savedResults);
+    return Array.isArray(results) ? results : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveResult(moves) {
+  const results = getResults();
+
+  results.push({
+    moves: moves,
+    date: new Date().toLocaleDateString(),
+  });
+
+  results.sort(
+    (firstResult, secondResult) => firstResult.moves - secondResult.moves,
+  );
+
+  const bestResults = results.slice(0, 10);
+  localStorage.setItem(resultsStorageKey, JSON.stringify(bestResults));
+}
+
+function showLeaderboard() {
+  const results = getResults();
+  const leaderboardContent = document.createElement("div");
+
+  if (results.length === 0) {
+    const noResults = document.createElement("p");
+    noResults.textContent = "No results yet.";
+    leaderboardContent.append(noResults);
+  } else {
+    const resultList = document.createElement("ol");
+
+    results.forEach((result) => {
+      const resultItem = document.createElement("li");
+      resultItem.textContent = `${result.moves} moves - ${result.date}`;
+      resultList.append(resultItem);
+    });
+
+    leaderboardContent.append(resultList);
+  }
+
+  openModal("Leaderboard", leaderboardContent);
 }
 
 function handleCardClick(event) {
@@ -168,6 +229,7 @@ function handleCardClick(event) {
 
     if (matchedPairs === 8 && !gameFinished) {
       gameFinished = true;
+      saveResult(movesCount);
       openModal("You won!", `Moves: ${movesCount}`);
     }
 
@@ -215,6 +277,7 @@ function startNewGame() {
 }
 
 newGameButton.addEventListener("click", startNewGame);
+leaderboardButton.addEventListener("click", showLeaderboard);
 
 const initialCards = cardData.concat(cardData);
 shuffle(initialCards);
