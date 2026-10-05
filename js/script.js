@@ -72,7 +72,57 @@ function createCard(cardData) {
   cardBack.textContent = cardData.symbol;
 
   card.append(cardFront, cardBack);
+  card.addEventListener("click", handleCardClick);
   return card;
+}
+
+let firstCard = null;
+let secondCard = null;
+let movesCount = 0;
+let matchedPairs = 0;
+let lockBoard = false;
+
+function handleCardClick(event) {
+  const clickedCard = event.currentTarget;
+
+  if (lockBoard || clickedCard.classList.contains("matched")) {
+    return;
+  }
+
+  if (clickedCard === firstCard) {
+    return;
+  }
+
+  clickedCard.classList.add("flipped");
+
+  if (firstCard === null) {
+    firstCard = clickedCard;
+    return;
+  }
+
+  secondCard = clickedCard;
+  movesCount += 1;
+  moves.textContent = `Moves: ${movesCount}`;
+
+  if (firstCard.dataset.id === secondCard.dataset.id) {
+    firstCard.classList.add("matched");
+    secondCard.classList.add("matched");
+    matchedPairs += 1;
+    pairs.textContent = `Pairs: ${matchedPairs} / 8`;
+    firstCard = null;
+    secondCard = null;
+    return;
+  }
+
+  lockBoard = true;
+
+  setTimeout(() => {
+    firstCard.classList.remove("flipped");
+    secondCard.classList.remove("flipped");
+    firstCard = null;
+    secondCard = null;
+    lockBoard = false;
+  }, 1000);
 }
 
 shuffle(cards);

@@ -57,6 +57,18 @@ body {
 	display: none;
 }
 
+.card.flipped .card-front {
+	display: none;
+}
+
+.card.flipped .card-back {
+	display: grid;
+}
+
+.card.matched {
+	cursor: default;
+}
+
 .new-game-btn,
 .leaderboard-btn {
 	padding: 8px 12px;
