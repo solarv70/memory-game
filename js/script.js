@@ -47,8 +47,6 @@ const cardData = [
   { id: 8, symbol: "🍒" },
 ];
 
-const cards = cardData.concat(cardData);
-
 function shuffle(cardsToShuffle) {
   for (let index = cardsToShuffle.length - 1; index > 0; index -= 1) {
     const randomIndex = Math.floor(Math.random() * (index + 1));
@@ -81,6 +79,7 @@ let secondCard = null;
 let movesCount = 0;
 let matchedPairs = 0;
 let lockBoard = false;
+let mismatchTimer = null;
 
 function handleCardClick(event) {
   const clickedCard = event.currentTarget;
@@ -116,17 +115,46 @@ function handleCardClick(event) {
 
   lockBoard = true;
 
-  setTimeout(() => {
+  mismatchTimer = setTimeout(() => {
     firstCard.classList.remove("flipped");
     secondCard.classList.remove("flipped");
     firstCard = null;
     secondCard = null;
     lockBoard = false;
+    mismatchTimer = null;
   }, 1000);
 }
 
-shuffle(cards);
+function startNewGame() {
+  if (mismatchTimer !== null) {
+    clearTimeout(mismatchTimer);
+  }
 
-cards.forEach((cardData) => {
+  mismatchTimer = null;
+  firstCard = null;
+  secondCard = null;
+  movesCount = 0;
+  matchedPairs = 0;
+  lockBoard = false;
+
+  moves.textContent = "Moves: 0";
+  pairs.textContent = "Pairs: 0 / 8";
+
+  gameBoard.replaceChildren();
+
+  const newCards = cardData.concat(cardData);
+  shuffle(newCards);
+
+  newCards.forEach((cardData) => {
+    gameBoard.append(createCard(cardData));
+  });
+}
+
+newGameButton.addEventListener("click", startNewGame);
+
+const initialCards = cardData.concat(cardData);
+shuffle(initialCards);
+
+initialCards.forEach((cardData) => {
   gameBoard.append(createCard(cardData));
 });
