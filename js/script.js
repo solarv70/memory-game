@@ -80,6 +80,61 @@ let movesCount = 0;
 let matchedPairs = 0;
 let lockBoard = false;
 let mismatchTimer = null;
+let gameFinished = false;
+let modalOverlay = null;
+let escapeHandler = null;
+
+function closeModal() {
+  if (modalOverlay !== null) {
+    modalOverlay.remove();
+    modalOverlay = null;
+  }
+
+  if (escapeHandler !== null) {
+    document.removeEventListener("keydown", escapeHandler);
+    escapeHandler = null;
+  }
+}
+
+function openModal(modalTitleText, modalContentText) {
+  closeModal();
+
+  modalOverlay = document.createElement("div");
+  modalOverlay.className = "modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+
+  const modalTitle = document.createElement("h2");
+  modalTitle.className = "modal-title";
+  modalTitle.textContent = modalTitleText;
+
+  const modalContent = document.createElement("p");
+  modalContent.className = "modal-content";
+  modalContent.textContent = modalContentText;
+
+  const modalClose = document.createElement("button");
+  modalClose.className = "modal-close";
+  modalClose.textContent = "Close";
+
+  modal.append(modalTitle, modalContent, modalClose);
+  modalOverlay.append(modal);
+  document.body.append(modalOverlay);
+
+  modalClose.addEventListener("click", closeModal);
+  modalOverlay.addEventListener("click", (event) => {
+    if (event.target === modalOverlay) {
+      closeModal();
+    }
+  });
+
+  escapeHandler = (event) => {
+    if (event.key === "Escape") {
+      closeModal();
+    }
+  };
+  document.addEventListener("keydown", escapeHandler);
+}
 
 function handleCardClick(event) {
   const clickedCard = event.currentTarget;
@@ -110,6 +165,12 @@ function handleCardClick(event) {
     pairs.textContent = `Pairs: ${matchedPairs} / 8`;
     firstCard = null;
     secondCard = null;
+
+    if (matchedPairs === 8 && !gameFinished) {
+      gameFinished = true;
+      openModal("You won!", `Moves: ${movesCount}`);
+    }
+
     return;
   }
 
@@ -126,6 +187,8 @@ function handleCardClick(event) {
 }
 
 function startNewGame() {
+  closeModal();
+
   if (mismatchTimer !== null) {
     clearTimeout(mismatchTimer);
   }
@@ -136,6 +199,7 @@ function startNewGame() {
   movesCount = 0;
   matchedPairs = 0;
   lockBoard = false;
+  gameFinished = false;
 
   moves.textContent = "Moves: 0";
   pairs.textContent = "Pairs: 0 / 8";
